@@ -1,0 +1,350 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Veri Giriş Uygulaması</title>
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.20.6/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const vardiyaOptions = ['Seçiniz', '1. Vardiya', '2. Vardiya', '3. Vardiya'];
+    const hatOptions = ['Seçiniz', 'Hat 1', 'Hat 2', 'Hat 3', 'Hat 4'];
+    const dummyNoOptions = ['Seçiniz', 'D001', 'D002', 'D003', 'D004'];
+    const jigNoOptions = ['Seçiniz', 'J001', 'J002', 'J003', 'J004'];
+    const hataKoduOptions = ['Seçiniz', 'H001', 'H002', 'H003', 'H004'];
+    const degisenParcaOptions = ['Seçiniz', 'Parça 1', 'Parça 2', 'Parça 3'];
+    const parcaAdediOptions = ['Seçiniz', '1', '2', '3', '4', '5'];
+
+    const SearchableDropdown = ({ options, value, onChange, placeholder }) => {
+      const [isOpen, setIsOpen] = React.useState(false);
+      const [search, setSearch] = React.useState('');
+
+      const filteredOptions = options.filter(option =>
+        option.toLowerCase().includes(search.toLowerCase())
+      );
+
+      return (
+        <div className="relative">
+          <div className="relative">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onFocus={() => setIsOpen(true)}
+              placeholder={value === '' ? placeholder : value}
+              className="w-full p-2 border rounded pr-8"
+            />
+            <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500">▼</span>
+          </div>
+          {isOpen && (
+            <ul className="absolute z-10 w-full bg-white border rounded mt-1 max-h-40 overflow-auto">
+              {filteredOptions.map((option, index) => (
+                <li
+                  key={index}
+                  className="p-2 hover:bg-gray-200 cursor-pointer"
+                  onClick={() => {
+                    onChange(option === 'Seçiniz' ? '' : option);
+                    setSearch('');
+                    setIsOpen(false);
+                  }}
+                >
+                  {option}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      );
+    };
+
+    const App = () => {
+      const [formData, setFormData] = React.useState({
+        sicilNo: '',
+        tarih: '',
+        vardiya: '',
+        hat: '',
+        dummyNo: '',
+        jigNo: '',
+        hataKodu: '',
+        hataKoduManual: '',
+        degisenParca: '',
+        degisenParcaManual: '',
+        parcaAdedi: '',
+        aciklama: ''
+      });
+      const [records, setRecords] = React.useState([]);
+      const [error, setError] = React.useState('');
+
+      const handleInputChange = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+        if (field === 'hataKodu' && value) {
+          setFormData(prev => ({ ...prev, hataKoduManual: '' }));
+        } else if (field === 'hataKoduManual' && value) {
+          setFormData(prev => ({ ...prev, hataKodu: '' }));
+        } else if (field === 'degisenParca' && value) {
+          setFormData(prev => ({ ...prev, degisenParcaManual: '' }));
+        } else if (field === 'degisenParcaManual' && value) {
+          setFormData(prev => ({ ...prev, degisenParca: '' }));
+        }
+      };
+
+      const validateForm = () => {
+        if (!formData.sicilNo) return 'Sicil No zorunludur.';
+        if (formData.sicilNo !== '00n' && formData.sicilNo !== '00m') return 'Sicil No Hatalı';
+        if (!formData.tarih) return 'Tarih zorunludur.';
+        if (!formData.vardiya || formData.vardiya === 'Seçiniz') return 'Vardiya zorunludur.';
+        if (!formData.hat || formData.hat === 'Seçiniz') return 'Hat zorunludur.';
+        if (!formData.hataKodu && !formData.hataKoduManual) return 'Hata Kodu veya Manuel Hata Kodu zorunludur.';
+        if (formData.hataKodu && formData.hataKoduManual) return 'Hata Kodu ve Manuel Hata Kodu birlikte kullanılamaz.';
+        if (formData.degisenParca && formData.degisenParcaManual) return 'Değişen Parça ve Manuel Değişen Parça birlikte kullanılamaz.';
+        if (!formData.aciklama) return 'Açıklama zorunludur.';
+        return '';
+      };
+
+      const handleSubmit = async () => {
+        const validationError = validateForm();
+        if (validationError) {
+          setError(validationError);
+          return;
+        }
+        setError('');
+
+        const newRecord = {
+          ...formData,
+          hataKodu: formData.hataKodu || formData.hataKoduManual,
+          degisenParca: formData.degisenParca || formData.degisenParcaManual
+        };
+
+        try {
+          const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3000'}/api/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newRecord)
+          });
+          if (response.ok) {
+            setRecords([...records, newRecord]);
+            setFormData({
+              sicilNo: '',
+              tarih: '',
+              vardiya: '',
+              hat: '',
+              dummyNo: '',
+              jigNo: '',
+              hataKodu: '',
+              hataKoduManual: '',
+              degisenParca: '',
+              degisenParcaManual: '',
+              parcaAdedi: '',
+              aciklama: ''
+            });
+          } else {
+            const errorData = await response.json();
+            setError(errorData.error || 'Veri kaydedilirken hata oluştu.');
+          }
+        } catch (err) {
+          setError('Veri kaydedilirken hata oluştu.');
+        }
+      };
+
+      return (
+        <div className="container mx-auto p-4">
+          <h1 className="text-2xl font-bold mb-4">Veri Giriş Formu</h1>
+          {error && <p className="text-red-500 mb-4">{error}</p>}
+          <div className="flex flex-col gap-4 mb-4">
+            <div>
+              <label className="block mb-1">Sicil No (Zorunlu)</label>
+              <input
+                type="text"
+                value={formData.sicilNo}
+                onChange={(e) => handleInputChange('sicilNo', e.target.value)}
+                placeholder="Sicil No girin"
+                className="w-full p-2 border rounded"
+              />
+            </div>
+            <div>
+              <label className="block mb-1">Tarih (Zorunlu)</label>
+              <input
+                type="date"
+                value={formData.tarih}
+                onChange={(e) => handleInputChange('tarih', e.target.value)}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+            <div>
+              <label className="block mb-1">Vardiya (Zorunlu)</label>
+              <SearchableDropdown
+                options={vardiyaOptions}
+                value={formData.vardiya}
+                onChange={(value) => handleInputChange('vardiya', value)}
+                placeholder="Vardiya seçin"
+              />
+            </div>
+            <div>
+              <label className="block mb-1">Hat (Zorunlu)</label>
+              <SearchableDropdown
+                options={hatOptions}
+                value={formData.hat}
+                onChange={(value) => handleInputChange('hat', value)}
+                placeholder="Hat seçin"
+              />
+            </div>
+            <div>
+              <label className="block mb-1">Dummy No</label>
+              <SearchableDropdown
+                options={dummyNoOptions}
+                value={formData.dummyNo}
+                onChange={(value) => handleInputChange('dummyNo', value)}
+                placeholder="Dummy No seçin"
+              />
+            </div>
+            <div>
+              <label className="block mb-1">Jig No</label>
+              <SearchableDropdown
+                options={jigNoOptions}
+                value={formData.jigNo}
+                onChange={(value) => handleInputChange('jigNo', value)}
+                placeholder="Jig No seçin"
+              />
+            </div>
+            <div>
+              <label className="block mb-1">Hata Kodu (Zorunlu)</label>
+              <SearchableDropdown
+                options={hataKoduOptions}
+                value={formData.hataKodu}
+                onChange={(value) => handleInputChange('hataKodu', value)}
+                placeholder="Hata Kodu seçin"
+              />
+              <input
+                type="text"
+                value={formData.hataKoduManual}
+                onChange={(e) => handleInputChange('hataKoduManual', e.target.value)}
+                placeholder="veya Manuel Hata Kodu"
+                className="w-full p-2 border rounded mt-2"
+              />
+            </div>
+            <div>
+              <label className="block mb-1">Değişen Parça</label>
+              <SearchableDropdown
+                options={degisenParcaOptions}
+                value={formData.degisenParca}
+                onChange={(value) => handleInputChange('degisenParca', value)}
+                placeholder="Değişen Parça seçin"
+              />
+              <input
+                type="text"
+                value={formData.degisenParcaManual}
+                onChange={(e) => handleInputChange('degisenParcaManual', e.target.value)}
+                placeholder="veya Manuel Değişen Parça"
+                className="w-full p-2 border rounded mt-2"
+              />
+            </div>
+            <div>
+              <label className="block mb-1">Parça Adedi</label>
+              <SearchableDropdown
+                options={parcaAdediOptions}
+                value={formData.parcaAdedi}
+                onChange={(value) => handleInputChange('parcaAdedi', value)}
+                placeholder="Parça Adedi seçin"
+              />
+            </div>
+            <div>
+              <label className="block mb-1">Açıklama (Zorunlu)</label>
+              <textarea
+                value={formData.aciklama}
+                onChange={(e) => handleInputChange('aciklama', e.target.value)}
+                className="w-full p-2 border rounded"
+                placeholder="Açıklama girin"
+              ></textarea>
+            </div>
+          </div>
+          <button
+            onClick={handleSubmit}
+            className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
+          >
+            Kaydet
+          </button>
+          <h2 className="text-xl font-bold mt-8 mb-4">Kayıtlar</h2>
+          <table className="w-full border-collapse border">
+            <thead>
+              <tr className="bg-gray-200">
+                <th className="border p-2">Sicil No</th>
+                <th className="border p-2">Tarih</th>
+                <th className="border p-2">Vardiya</th>
+                <th className="border p-2">Hat</th>
+                <th className="border p-2">Dummy No</th>
+                <th className="border p-2">Jig No</th>
+                <th className="border p-2">Hata Kodu</th>
+                <th className="border p-2">Değişen Parça</th>
+                <th className="border p-2">Parça Adedi</th>
+                <th className="border p-2">Açıklama</th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((record, index) => (
+                <tr key={index}>
+                  <td className="border p-2">{record.sicilNo}</td>
+                  <td className="border p-2">{record.tarih}</td>
+                  <td className="border p-2">{record.vardiya}</td>
+                  <td className="border p-2">{record.hat}</td>
+                  <td className="border p-2">{record.dummyNo}</td>
+                  <td className="border p-2">{record.jigNo}</td>
+                  <td className="border p-2">{record.hataKodu}</td>
+                  <td className="border p-2">{record.degisenParca}</td>
+                  <td className="border p-2">{record.parcaAdedi}</td>
+                  <td className="border p-2">{record.aciklama}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    };
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
