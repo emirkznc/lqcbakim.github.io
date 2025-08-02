@@ -43,308 +43,350 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Veri Giriş Uygulaması</title>
-  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.20.6/babel.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.10"></script>
 </head>
 <body>
   <div id="root"></div>
   <script type="text/babel">
-    const vardiyaOptions = ['Seçiniz', '1. Vardiya', '2. Vardiya', '3. Vardiya'];
-    const hatOptions = ['Seçiniz', 'Hat 1', 'Hat 2', 'Hat 3', 'Hat 4'];
-    const dummyNoOptions = ['Seçiniz', 'D001', 'D002', 'D003', 'D004'];
-    const jigNoOptions = ['Seçiniz', 'J001', 'J002', 'J003', 'J004'];
-    const hataKoduOptions = ['Seçiniz', 'H001', 'H002', 'H003', 'H004'];
-    const degisenParcaOptions = ['Seçiniz', 'Parça 1', 'Parça 2', 'Parça 3'];
-    const parcaAdediOptions = ['Seçiniz', '1', '2', '3', '4', '5'];
-
-    const SearchableDropdown = ({ options, value, onChange, placeholder }) => {
-      const [isOpen, setIsOpen] = React.useState(false);
-      const [search, setSearch] = React.useState('');
-
-      const filteredOptions = options.filter(option =>
-        option.toLowerCase().includes(search.toLowerCase())
-      );
-
-      return (
-        <div className="relative">
-          <div className="relative">
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onFocus={() => setIsOpen(true)}
-              placeholder={value === '' ? placeholder : value}
-              className="w-full p-2 border rounded pr-8"
-            />
-            <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500">▼</span>
-          </div>
-          {isOpen && (
-            <ul className="absolute z-10 w-full bg-white border rounded mt-1 max-h-40 overflow-auto">
-              {filteredOptions.map((option, index) => (
-                <li
-                  key={index}
-                  className="p-2 hover:bg-gray-200 cursor-pointer"
-                  onClick={() => {
-                    onChange(option === 'Seçiniz' ? '' : option);
-                    setSearch('');
-                    setIsOpen(false);
-                  }}
-                >
-                  {option}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      );
-    };
+    const { useState } = React;
 
     const App = () => {
-      const [formData, setFormData] = React.useState({
+      const [formData, setFormData] = useState({
         sicilNo: '',
         tarih: '',
-        vardiya: '',
-        hat: '',
-        dummyNo: '',
-        jigNo: '',
-        hataKodu: '',
-        hataKoduManual: '',
-        degisenParca: '',
-        degisenParcaManual: '',
-        parcaAdedi: '',
+        vardiya: 'Seçiniz',
+        hat: 'Seçiniz',
+        dummyNo: 'Seçiniz',
+        jigNo: 'Seçiniz',
+        hataKodu: 'Seçiniz',
+        hataKoduManuel: '',
+        degisenParca: 'Seçiniz',
+        degisenParcaManuel: '',
+        parcaAdedi: 'Seçiniz',
         aciklama: ''
       });
-      const [records, setRecords] = React.useState([]);
-      const [error, setError] = React.useState('');
+      const [records, setRecords] = useState([]);
+      const [error, setError] = useState('');
+      const [useManualHataKodu, setUseManualHataKodu] = useState(false);
+      const [useManualDegisenParca, setUseManualDegisenParca] = useState(false);
 
-      const handleInputChange = (field, value) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
-        if (field === 'hataKodu' && value) {
-          setFormData(prev => ({ ...prev, hataKoduManual: '' }));
-        } else if (field === 'hataKoduManual' && value) {
-          setFormData(prev => ({ ...prev, hataKodu: '' }));
-        } else if (field === 'degisenParca' && value) {
-          setFormData(prev => ({ ...prev, degisenParcaManual: '' }));
-        } else if (field === 'degisenParcaManual' && value) {
-          setFormData(prev => ({ ...prev, degisenParca: '' }));
-        }
+      const options = {
+        vardiya: ['Seçiniz', 'Sabah', 'Öğle', 'Gece'],
+        hat: ['Seçiniz', 'Hat 1', 'Hat 2', 'Hat 3'],
+        dummyNo: ['Seçiniz', 'D001', 'D002', 'D003'],
+        jigNo: ['Seçiniz', 'J001', 'J002', 'J003'],
+        hataKodu: ['Seçiniz', 'H001', 'H002', 'H003'],
+        degisenParca: ['Seçiniz', 'Parça 1', 'Parça 2', 'Parça 3'],
+        parcaAdedi: ['Seçiniz', '1', '2', '3', '4', '5']
       };
 
-      const validateForm = () => {
-        if (!formData.sicilNo) return 'Sicil No zorunludur.';
-        if (formData.sicilNo !== '00n' && formData.sicilNo !== '00m') return 'Sicil No Hatalı';
-        if (!formData.tarih) return 'Tarih zorunludur.';
-        if (!formData.vardiya || formData.vardiya === 'Seçiniz') return 'Vardiya zorunludur.';
-        if (!formData.hat || formData.hat === 'Seçiniz') return 'Hat zorunludur.';
-        if (!formData.hataKodu && !formData.hataKoduManual) return 'Hata Kodu veya Manuel Hata Kodu zorunludur.';
-        if (formData.hataKodu && formData.hataKoduManual) return 'Hata Kodu ve Manuel Hata Kodu birlikte kullanılamaz.';
-        if (formData.degisenParca && formData.degisenParcaManual) return 'Değişen Parça ve Manuel Değişen Parça birlikte kullanılamaz.';
-        if (!formData.aciklama) return 'Açıklama zorunludur.';
-        return '';
-      };
+      const validateSicilNo = (sicil) => ['00n', '00m'].includes(sicil);
 
-      const handleSubmit = async () => {
-        const validationError = validateForm();
-        if (validationError) {
-          setError(validationError);
-          return;
-        }
+      const handleSubmit = (e) => {
+        e.preventDefault();
         setError('');
 
+        // Validation
+        if (!formData.sicilNo || !formData.tarih || formData.vardiya === 'Seçiniz' || 
+            formData.hat === 'Seçiniz' || !formData.aciklama ||
+            (!formData.hataKodu && !formData.hataKoduManuel) ||
+            (formData.hataKodu === 'Seçiniz' && !formData.hataKoduManuel)) {
+          setError('Sicil No, Tarih, Vardiya, Hat, Hata Kodu ve Açıklama alanları zorunludur.');
+          return;
+        }
+
+        if (!validateSicilNo(formData.sicilNo)) {
+          setError('Sicil No Hatalı');
+          return;
+        }
+
+        if (formData.hataKodu !== 'Seçiniz' && formData.hataKoduManuel) {
+          setError('Hata Kodu için yalnızca bir seçenek kullanılabilir.');
+          return;
+        }
+        if (formData.degisenParca !== 'Seçiniz' && formData.degisenParcaManuel) {
+          setError('Değişen Parça için yalnızca bir seçenek kullanılabilir.');
+          return;
+        }
+
         const newRecord = {
-          ...formData,
-          hataKodu: formData.hataKodu || formData.hataKoduManual,
-          degisenParca: formData.degisenParca || formData.degisenParcaManual
+          id: Date.now(),
+          sicilNo: formData.sicilNo,
+          tarih: formData.tarih,
+          vardiya: formData.vardiya,
+          hat: formData.hat,
+          dummyNo: formData.dummyNo === 'Seçiniz' ? '' : formData.dummyNo,
+          jigNo: formData.jigNo === 'Seçiniz' ? '' : formData.jigNo,
+          hataKodu: useManualHataKodu ? formData.hataKoduManuel : (formData.hataKodu === 'Seçiniz' ? '' : formData.hataKodu),
+          degisenParca: useManualDegisenParca ? formData.degisenParcaManuel : (formData.degisenParca === 'Seçiniz' ? '' : formData.degisenParca),
+          parcaAdedi: formData.parcaAdedi === 'Seçiniz' ? '' : formData.parcaAdedi,
+          aciklama: formData.aciklama
         };
 
-        try {
-          const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3000'}/api/save`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newRecord)
-          });
-          if (response.ok) {
-            setRecords([...records, newRecord]);
-            setFormData({
-              sicilNo: '',
-              tarih: '',
-              vardiya: '',
-              hat: '',
-              dummyNo: '',
-              jigNo: '',
-              hataKodu: '',
-              hataKoduManual: '',
-              degisenParca: '',
-              degisenParcaManual: '',
-              parcaAdedi: '',
-              aciklama: ''
-            });
-          } else {
-            const errorData = await response.json();
-            setError(errorData.error || 'Veri kaydedilirken hata oluştu.');
-          }
-        } catch (err) {
-          setError('Veri kaydedilirken hata oluştu.');
-        }
+        setRecords([...records, newRecord]);
+        setFormData({
+          sicilNo: '',
+          tarih: '',
+          vardiya: 'Seçiniz',
+          hat: 'Seçiniz',
+          dummyNo: 'Seçiniz',
+          jigNo: 'Seçiniz',
+          hataKodu: 'Seçiniz',
+          hataKoduManuel: '',
+          degisenParca: 'Seçiniz',
+          degisenParcaManuel: '',
+          parcaAdedi: 'Seçiniz',
+          aciklama: ''
+        });
+        setUseManualHataKodu(false);
+        setUseManualDegisenParca(false);
+      };
+
+      const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData({ ...formData, [name]: value });
       };
 
       return (
         <div className="container mx-auto p-4">
-          <h1 className="text-2xl font-bold mb-4">Veri Giriş Formu</h1>
-          {error && <p className="text-red-500 mb-4">{error}</p>}
-          <div className="flex flex-col gap-4 mb-4">
+          <h1 className="text-2xl font-bold mb-4">Veri Giriş Uygulaması</h1>
+          
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block mb-1">Sicil No (Zorunlu)</label>
+              <label className="block text-sm font-medium">Sicil No</label>
               <input
                 type="text"
+                name="sicilNo"
                 value={formData.sicilNo}
-                onChange={(e) => handleInputChange('sicilNo', e.target.value)}
-                placeholder="Sicil No girin"
-                className="w-full p-2 border rounded"
+                onChange={handleInputChange}
+                className="mt-1 block w-full border rounded-md p-2"
+                required
               />
             </div>
+
             <div>
-              <label className="block mb-1">Tarih (Zorunlu)</label>
+              <label className="block text-sm font-medium">Tarih</label>
               <input
                 type="date"
+                name="tarih"
                 value={formData.tarih}
-                onChange={(e) => handleInputChange('tarih', e.target.value)}
-                className="w-full p-2 border rounded"
+                onChange={handleInputChange}
+                className="mt-1 block w-full border rounded-md p-2"
+                required
               />
             </div>
+
             <div>
-              <label className="block mb-1">Vardiya (Zorunlu)</label>
-              <SearchableDropdown
-                options={vardiyaOptions}
+              <label className="block text-sm font-medium">Vardiya</label>
+              <select
+                name="vardiya"
                 value={formData.vardiya}
-                onChange={(value) => handleInputChange('vardiya', value)}
-                placeholder="Vardiya seçin"
-              />
+                onChange={handleInputChange}
+                className="mt-1 block w-full border rounded-md p-2"
+                required
+              >
+                {options.vardiya.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
             </div>
+
             <div>
-              <label className="block mb-1">Hat (Zorunlu)</label>
-              <SearchableDropdown
-                options={hatOptions}
+              <label className="block text-sm font-medium">Hat</label>
+              <select
+                name="hat"
                 value={formData.hat}
-                onChange={(value) => handleInputChange('hat', value)}
-                placeholder="Hat seçin"
-              />
+                onChange={handleInputChange}
+                className="mt-1 block w-full border rounded-md p-2"
+                required
+              >
+                {options.hat.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
             </div>
+
             <div>
-              <label className="block mb-1">Dummy No</label>
-              <SearchableDropdown
-                options={dummyNoOptions}
+              <label className="block text-sm font-medium">Dummy No</label>
+              <select
+                name="dummyNo"
                 value={formData.dummyNo}
-                onChange={(value) => handleInputChange('dummyNo', value)}
-                placeholder="Dummy No seçin"
-              />
+                onChange={handleInputChange}
+                className="mt-1 block w-full border rounded-md p-2"
+              >
+                {options.dummyNo.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
             </div>
+
             <div>
-              <label className="block mb-1">Jig No</label>
-              <SearchableDropdown
-                options={jigNoOptions}
+              <label className="block text-sm font-medium">Jig No</label>
+              <select
+                name="jigNo"
                 value={formData.jigNo}
-                onChange={(value) => handleInputChange('jigNo', value)}
-                placeholder="Jig No seçin"
-              />
+                onChange={handleInputChange}
+                className="mt-1 block w-full border rounded-md p-2"
+              >
+                {options.jigNo.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
             </div>
+
             <div>
-              <label className="block mb-1">Hata Kodu (Zorunlu)</label>
-              <SearchableDropdown
-                options={hataKoduOptions}
-                value={formData.hataKodu}
-                onChange={(value) => handleInputChange('hataKodu', value)}
-                placeholder="Hata Kodu seçin"
-              />
-              <input
-                type="text"
-                value={formData.hataKoduManual}
-                onChange={(e) => handleInputChange('hataKoduManual', e.target.value)}
-                placeholder="veya Manuel Hata Kodu"
-                className="w-full p-2 border rounded mt-2"
-              />
+              <label className="block text-sm font-medium">Hata Kodu</label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={useManualHataKodu}
+                  onChange={() => setUseManualHataKodu(!useManualHataKodu)}
+                />
+                <span>Manuel Giriş</span>
+              </div>
+              {useManualHataKodu ? (
+                <input
+                  type="text"
+                  name="hataKoduManuel"
+                  value={formData.hataKoduManuel}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border rounded-md p-2"
+                />
+              ) : (
+                <select
+                  name="hataKodu"
+                  value={formData.hataKodu}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border rounded-md p-2"
+                >
+                  {options.hataKodu.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              )}
             </div>
+
             <div>
-              <label className="block mb-1">Değişen Parça</label>
-              <SearchableDropdown
-                options={degisenParcaOptions}
-                value={formData.degisenParca}
-                onChange={(value) => handleInputChange('degisenParca', value)}
-                placeholder="Değişen Parça seçin"
-              />
-              <input
-                type="text"
-                value={formData.degisenParcaManual}
-                onChange={(e) => handleInputChange('degisenParcaManual', e.target.value)}
-                placeholder="veya Manuel Değişen Parça"
-                className="w-full p-2 border rounded mt-2"
-              />
+              <label className="block text-sm font-medium">Değişen Parça</label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={useManualDegisenParca}
+                  onChange={() => setUseManualDegisenParca(!useManualDegisenParca)}
+                />
+                <span>Manuel Giriş</span>
+              </div>
+              {useManualDegisenParca ? (
+                <input
+                  type="text"
+                  name="degisenParcaManuel"
+                  value={formData.degisenParcaManuel}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border rounded-md p-2"
+                />
+              ) : (
+                <select
+                  name="degisenParca"
+                  value={formData.degisenParca}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border rounded-md p-2"
+                >
+                  {options.degisenParca.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              )}
             </div>
+
             <div>
-              <label className="block mb-1">Parça Adedi</label>
-              <SearchableDropdown
-                options={parcaAdediOptions}
+              <label className="block text-sm font-medium">Parça Adedi</label>
+              <select
+                name="parcaAdedi"
                 value={formData.parcaAdedi}
-                onChange={(value) => handleInputChange('parcaAdedi', value)}
-                placeholder="Parça Adedi seçin"
+                onChange={handleInputChange}
+                className="mt-1 block w-full border rounded-md p-2"
+              >
+                {options.parcaAdedi.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium">Açıklama</label>
+              <textarea
+                name="aciklama"
+                value={formData.aciklama}
+                onChange={handleInputChange}
+                className="mt-1 block w-full border rounded-md p-2"
+                required
               />
             </div>
-            <div>
-              <label className="block mb-1">Açıklama (Zorunlu)</label>
-              <textarea
-                value={formData.aciklama}
-                onChange={(e) => handleInputChange('aciklama', e.target.value)}
-                className="w-full p-2 border rounded"
-                placeholder="Açıklama girin"
-              ></textarea>
+
+            <button
+              type="submit"
+              className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+            >
+              Kaydet
+            </button>
+          </form>
+
+          <div className="mt-8">
+            <h2 className="text-xl font-bold mb-4">Kayıtlar</h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full border">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border px-4 py-2">Sicil No</th>
+                    <th className="border px-4 py-2">Tarih</th>
+                    <th className="border px-4 py-2">Vardiya</th>
+                    <th className="border px-4 py-2">Hat</th>
+                    <th className="border px-4 py-2">Dummy No</th>
+                    <th className="border px-4 py-2">Jig No</th>
+                    <th className="border px-4 py-2">Hata Kodu</th>
+                    <th className="border px-4 py-2">Değişen Parça</th>
+                    <th className="border px-4 py-2">Parça Adedi</th>
+                    <th className="border px-4 py-2">Açıklama</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {records.map((record) => (
+                    <tr key={record.id}>
+                      <td className="border px-4 py-2">{record.sicilNo}</td>
+                      <td className="border px-4 py-2">{record.tarih}</td>
+                      <td className="border px-4 py-2">{record.vardiya}</td>
+                      <td className="border px-4 py-2">{record.hat}</td>
+                      <td className="border px-4 py-2">{record.dummyNo}</td>
+                      <td className="border px-4 py-2">{record.jigNo}</td>
+                      <td className="border px-4 py-2">{record.hataKodu}</td>
+                      <td className="border px-4 py-2">{record.degisenParca}</td>
+                      <td className="border px-4 py-2">{record.parcaAdedi}</td>
+                      <td className="border px-4 py-2">{record.aciklama}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-          <button
-            onClick={handleSubmit}
-            className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
-          >
-            Kaydet
-          </button>
-          <h2 className="text-xl font-bold mt-8 mb-4">Kayıtlar</h2>
-          <table className="w-full border-collapse border">
-            <thead>
-              <tr className="bg-gray-200">
-                <th className="border p-2">Sicil No</th>
-                <th className="border p-2">Tarih</th>
-                <th className="border p-2">Vardiya</th>
-                <th className="border p-2">Hat</th>
-                <th className="border p-2">Dummy No</th>
-                <th className="border p-2">Jig No</th>
-                <th className="border p-2">Hata Kodu</th>
-                <th className="border p-2">Değişen Parça</th>
-                <th className="border p-2">Parça Adedi</th>
-                <th className="border p-2">Açıklama</th>
-              </tr>
-            </thead>
-            <tbody>
-              {records.map((record, index) => (
-                <tr key={index}>
-                  <td className="border p-2">{record.sicilNo}</td>
-                  <td className="border p-2">{record.tarih}</td>
-                  <td className="border p-2">{record.vardiya}</td>
-                  <td className="border p-2">{record.hat}</td>
-                  <td className="border p-2">{record.dummyNo}</td>
-                  <td className="border p-2">{record.jigNo}</td>
-                  <td className="border p-2">{record.hataKodu}</td>
-                  <td className="border p-2">{record.degisenParca}</td>
-                  <td className="border p-2">{record.parcaAdedi}</td>
-                  <td className="border p-2">{record.aciklama}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       );
     };
 
-    ReactDOM.render(<App />, document.getElementById('root'));
+    try {
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+    } catch (error) {
+      console.error('React rendering error:', error);
+    }
   </script>
 </body>
 </html>
