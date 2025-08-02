@@ -145,6 +145,16 @@
         setUseManualDegisenParca(false);
       };
 
+      const handleDelete = (id) => {
+        const password = prompt('Admin şifresini giriniz:');
+        if (password === 'lqcadmin012') {
+          setRecords(records.filter(record => record.id !== id));
+          alert('Kayıt başarıyla silindi.');
+        } else {
+          alert('Hatalı şifre. Silme işlemi yapılamadı.');
+        }
+      };
+
       const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
@@ -356,6 +366,7 @@
                     <th className="border px-4 py-2">Değişen Parça</th>
                     <th className="border px-4 py-2">Parça Adedi</th>
                     <th className="border px-4 py-2">Açıklama</th>
+                    <th className="border px-4 py-2">İşlem</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -371,6 +382,14 @@
                       <td className="border px-4 py-2">{record.degisenParca}</td>
                       <td className="border px-4 py-2">{record.parcaAdedi}</td>
                       <td className="border px-4 py-2">{record.aciklama}</td>
+                      <td className="border px-4 py-2">
+                        <button
+                          onClick={() => handleDelete(record.id)}
+                          className="bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600"
+                        >
+                          Sil
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
