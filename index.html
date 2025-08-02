@@ -42,370 +42,518 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Veri Giriş Uygulaması</title>
-  <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
-  <script src="https://cdn.tailwindcss.com/3.4.10"></script>
+  <title>Veri Giriş Sitesi</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel">
-    const { useState } = React;
+  <script>
+    const { useState, useEffect } = React;
+
+    function isValidSicilNo(sicilNo) {
+      return sicilNo === "00n" || sicilNo === "00m";
+    }
+
+    const ADMIN_PASSWORD = "lqcadmin012"; // Admin için basit bir parola (geliştirme için örnek)
 
     const App = () => {
       const [formData, setFormData] = useState({
         sicilNo: '',
-        tarih: '',
-        vardiya: 'Seçiniz',
-        hat: 'Seçiniz',
-        dummyNo: 'Seçiniz',
-        jigNo: 'Seçiniz',
-        hataKodu: 'Seçiniz',
-        hataKoduManuel: '',
-        degisenParca: 'Seçiniz',
-        degisenParcaManuel: '',
-        parcaAdedi: 'Seçiniz',
-        aciklama: ''
+        tarih: new Date().toISOString().split('T')[0],
+        vardiya: '',
+        hat: '',
+        dummyNo: '',
+        jigNo: '',
+        hataKodu: '',
+        degisenParca: '',
+        parcaAdedi: '',
+        aciklama: '',
+        hataKoduManual: false,
+        degisenParcaManual: false,
+        customHataKodu: '',
+        customDegisenParca: ''
       });
-      const [records, setRecords] = useState([]);
-      const [error, setError] = useState('');
-      const [useManualHataKodu, setUseManualHataKodu] = useState(false);
-      const [useManualDegisenParca, setUseManualDegisenParca] = useState(false);
 
-      const options = {
-        vardiya: ['Seçiniz', 'Sabah', 'Öğle', 'Gece'],
-        hat: ['Seçiniz', 'Hat 1', 'Hat 2', 'Hat 3'],
-        dummyNo: ['Seçiniz', 'D001', 'D002', 'D003'],
-        jigNo: ['Seçiniz', 'J001', 'J002', 'J003'],
-        hataKodu: ['Seçiniz', 'H001', 'H002', 'H003'],
-        degisenParca: ['Seçiniz', 'Parça 1', 'Parça 2', 'Parça 3'],
-        parcaAdedi: ['Seçiniz', '1', '2', '3', '4', '5']
+      const [tableData, setTableData] = useState([]);
+      const [errors, setErrors] = useState({});
+      const [submissionMessage, setSubmissionMessage] = useState('');
+      const [isAdmin, setIsAdmin] = useState(false);
+      const [adminInput, setAdminInput] = useState('');
+      const [adminError, setAdminError] = useState('');
+
+      const vardiyaOptions = ['1. Vardiya', '2. Vardiya', '3. Vardiya'];
+      const hatOptions = ['Hat 1', 'Hat 2', 'Hat 3', 'Hat 4'];
+      const dummyNoOptions = ['D001', 'D002', 'D003', 'D004'];
+      const jigNoOptions = ['J001', 'J002', 'J003', 'J004'];
+      const hataKoduOptions = ['H001', 'H002', 'H003', 'H004'];
+      const degisenParcaOptions = ['Parça 1', 'Parça 2', 'Parça 3', 'Parça 4'];
+      const parcaAdediOptions = ['1', '2', '3', '4', '5'];
+
+      useEffect(() => {
+        try {
+          const savedData = localStorage.getItem('tableData');
+          if (savedData) {
+            setTableData(JSON.parse(savedData));
+          }
+        } catch (error) {
+          console.error('localStorage yükleme hatası:', error);
+        }
+      }, []);
+
+      const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({
+          ...prev,
+          [name]: type === 'checkbox' ? checked : value
+        }));
+        setErrors(prev => ({ ...prev, [name]: null }));
       };
 
-      const validateSicilNo = (sicil) => ['00n', '00m'].includes(sicil);
+      const validateForm = () => {
+        const newErrors = {};
+        if (!formData.sicilNo) {
+          newErrors.sicilNo = 'Sicil No zorunludur';
+        } else if (!isValidSicilNo(formData.sicilNo)) {
+          newErrors.sicilNo = 'Geçersiz Sicil No';
+        }
+        if (!formData.tarih) newErrors.tarih = 'Tarih zorunludur';
+        if (!formData.vardiya) newErrors.vardiya = 'Vardiya zorunludur';
+        if (!formData.hat) newErrors.hat = 'Hat zorunludur';
+        if (!formData.hataKodu && !formData.customHataKodu) newErrors.hataKodu = 'Hata Kodu zorunludur';
+        if (!formData.aciklama) newErrors.aciklama = 'Açıklama zorunludur';
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+      };
 
       const handleSubmit = (e) => {
         e.preventDefault();
-        setError('');
-
-        // Validation
-        if (!formData.sicilNo || !formData.tarih || formData.vardiya === 'Seçiniz' || 
-            formData.hat === 'Seçiniz' || !formData.aciklama ||
-            (!formData.hataKodu && !formData.hataKoduManuel) ||
-            (formData.hataKodu === 'Seçiniz' && !formData.hataKoduManuel)) {
-          setError('Sicil No, Tarih, Vardiya, Hat, Hata Kodu ve Açıklama alanları zorunludur.');
-          return;
-        }
-
-        if (!validateSicilNo(formData.sicilNo)) {
-          setError('Sicil No Hatalı');
-          return;
-        }
-
-        if (formData.hataKodu !== 'Seçiniz' && formData.hataKoduManuel) {
-          setError('Hata Kodu için yalnızca bir seçenek kullanılabilir.');
-          return;
-        }
-        if (formData.degisenParca !== 'Seçiniz' && formData.degisenParcaManuel) {
-          setError('Değişen Parça için yalnızca bir seçenek kullanılabilir.');
-          return;
-        }
-
-        const newRecord = {
-          id: Date.now(),
-          sicilNo: formData.sicilNo,
-          tarih: formData.tarih,
-          vardiya: formData.vardiya,
-          hat: formData.hat,
-          dummyNo: formData.dummyNo === 'Seçiniz' ? '' : formData.dummyNo,
-          jigNo: formData.jigNo === 'Seçiniz' ? '' : formData.jigNo,
-          hataKodu: useManualHataKodu ? formData.hataKoduManuel : (formData.hataKodu === 'Seçiniz' ? '' : formData.hataKodu),
-          degisenParca: useManualDegisenParca ? formData.degisenParcaManuel : (formData.degisenParca === 'Seçiniz' ? '' : formData.degisenParca),
-          parcaAdedi: formData.parcaAdedi === 'Seçiniz' ? '' : formData.parcaAdedi,
-          aciklama: formData.aciklama
-        };
-
-        setRecords([...records, newRecord]);
-        setFormData({
-          sicilNo: '',
-          tarih: '',
-          vardiya: 'Seçiniz',
-          hat: 'Seçiniz',
-          dummyNo: 'Seçiniz',
-          jigNo: 'Seçiniz',
-          hataKodu: 'Seçiniz',
-          hataKoduManuel: '',
-          degisenParca: 'Seçiniz',
-          degisenParcaManuel: '',
-          parcaAdedi: 'Seçiniz',
-          aciklama: ''
-        });
-        setUseManualHataKodu(false);
-        setUseManualDegisenParca(false);
-      };
-
-      const handleDelete = (id) => {
-        const password = prompt('Admin şifresini giriniz:');
-        if (password === 'lqcadmin012') {
-          setRecords(records.filter(record => record.id !== id));
-          alert('Kayıt başarıyla silindi.');
+        if (validateForm()) {
+          const newEntry = {
+            sicilNo: formData.sicilNo,
+            tarih: formData.tarih,
+            vardiya: formData.vardiya,
+            hat: formData.hat,
+            dummyNo: formData.dummyNo || '-',
+            jigNo: formData.jigNo || '-',
+            hataKodu: formData.hataKoduManual ? formData.customHataKodu : formData.hataKodu,
+            degisenParca: formData.degisenParcaManual ? formData.customDegisenParca : formData.degisenParca || '-',
+            parcaAdedi: formData.parcaAdedi || '-',
+            aciklama: formData.aciklama
+          };
+          const updatedTableData = [...tableData, newEntry];
+          setTableData(updatedTableData);
+          try {
+            localStorage.setItem('tableData', JSON.stringify(updatedTableData));
+            setSubmissionMessage('Kayıt başarıyla eklendi!');
+          } catch (error) {
+            setSubmissionMessage('Kayıt eklendi ancak localStorage\'a kaydedilemedi.');
+          }
+          setFormData({
+            sicilNo: '',
+            tarih: new Date().toISOString().split('T')[0],
+            vardiya: '',
+            hat: '',
+            dummyNo: '',
+            jigNo: '',
+            hataKodu: '',
+            degisenParca: '',
+            parcaAdedi: '',
+            aciklama: '',
+            hataKoduManual: false,
+            degisenParcaManual: false,
+            customHataKodu: '',
+            customDegisenParca: ''
+          });
+          setErrors({});
         } else {
-          alert('Hatalı şifre. Silme işlemi yapılamadı.');
+          setSubmissionMessage('Lütfen tüm zorunlu alanları doldurun.');
+        }
+        setTimeout(() => setSubmissionMessage(''), 3000);
+      };
+
+      const createDatalist = (id, options) => {
+        return React.createElement(
+          'datalist',
+          { id },
+          options.map(option =>
+            React.createElement('option', { key: option, value: option })
+          )
+        );
+      };
+
+      // Admin login işlemi
+      const handleAdminLogin = (e) => {
+        e.preventDefault();
+        if (adminInput === ADMIN_PASSWORD) {
+          setIsAdmin(true);
+          setAdminError('');
+        } else {
+          setIsAdmin(false);
+          setAdminError('Yanlış admin şifresi!');
+        }
+        setAdminInput('');
+      };
+
+      // Bir satırı sil
+      const handleDeleteRow = (index) => {
+        if (!window.confirm("Kaydı silmek istediğinize emin misiniz?")) return;
+        const newTableData = tableData.slice();
+        newTableData.splice(index, 1);
+        setTableData(newTableData);
+        try {
+          localStorage.setItem('tableData', JSON.stringify(newTableData));
+        } catch (error) {
+          // hata vermesin
         }
       };
 
-      const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
-      };
-
-      return (
-        <div className="container mx-auto p-4">
-          <h1 className="text-2xl font-bold mb-4">Veri Giriş Uygulaması</h1>
-          
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium">Sicil No</label>
-              <input
-                type="text"
-                name="sicilNo"
-                value={formData.sicilNo}
-                onChange={handleInputChange}
-                className="mt-1 block w-full border rounded-md p-2"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Tarih</label>
-              <input
-                type="date"
-                name="tarih"
-                value={formData.tarih}
-                onChange={handleInputChange}
-                className="mt-1 block w-full border rounded-md p-2"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Vardiya</label>
-              <select
-                name="vardiya"
-                value={formData.vardiya}
-                onChange={handleInputChange}
-                className="mt-1 block w-full border rounded-md p-2"
-                required
-              >
-                {options.vardiya.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Hat</label>
-              <select
-                name="hat"
-                value={formData.hat}
-                onChange={handleInputChange}
-                className="mt-1 block w-full border rounded-md p-2"
-                required
-              >
-                {options.hat.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Dummy No</label>
-              <select
-                name="dummyNo"
-                value={formData.dummyNo}
-                onChange={handleInputChange}
-                className="mt-1 block w-full border rounded-md p-2"
-              >
-                {options.dummyNo.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Jig No</label>
-              <select
-                name="jigNo"
-                value={formData.jigNo}
-                onChange={handleInputChange}
-                className="mt-1 block w-full border rounded-md p-2"
-              >
-                {options.jigNo.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Hata Kodu</label>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={useManualHataKodu}
-                  onChange={() => setUseManualHataKodu(!useManualHataKodu)}
-                />
-                <span>Manuel Giriş</span>
-              </div>
-              {useManualHataKodu ? (
-                <input
-                  type="text"
-                  name="hataKoduManuel"
-                  value={formData.hataKoduManuel}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border rounded-md p-2"
-                />
-              ) : (
-                <select
-                  name="hataKodu"
-                  value={formData.hataKodu}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border rounded-md p-2"
-                >
-                  {options.hataKodu.map((option) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Değişen Parça</label>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={useManualDegisenParca}
-                  onChange={() => setUseManualDegisenParca(!useManualDegisenParca)}
-                />
-                <span>Manuel Giriş</span>
-              </div>
-              {useManualDegisenParca ? (
-                <input
-                  type="text"
-                  name="degisenParcaManuel"
-                  value={formData.degisenParcaManuel}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border rounded-md p-2"
-                />
-              ) : (
-                <select
-                  name="degisenParca"
-                  value={formData.degisenParca}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border rounded-md p-2"
-                >
-                  {options.degisenParca.map((option) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Parça Adedi</label>
-              <select
-                name="parcaAdedi"
-                value={formData.parcaAdedi}
-                onChange={handleInputChange}
-                className="mt-1 block w-full border rounded-md p-2"
-              >
-                {options.parcaAdedi.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Açıklama</label>
-              <textarea
-                name="aciklama"
-                value={formData.aciklama}
-                onChange={handleInputChange}
-                className="mt-1 block w-full border rounded-md p-2"
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
-            >
-              Kaydet
-            </button>
-          </form>
-
-          <div className="mt-8">
-            <h2 className="text-xl font-bold mb-4">Kayıtlar</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full border">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border px-4 py-2">Sicil No</th>
-                    <th className="border px-4 py-2">Tarih</th>
-                    <th className="border px-4 py-2">Vardiya</th>
-                    <th className="border px-4 py-2">Hat</th>
-                    <th className="border px-4 py-2">Dummy No</th>
-                    <th className="border px-4 py-2">Jig No</th>
-                    <th className="border px-4 py-2">Hata Kodu</th>
-                    <th className="border px-4 py-2">Değişen Parça</th>
-                    <th className="border px-4 py-2">Parça Adedi</th>
-                    <th className="border px-4 py-2">Açıklama</th>
-                    <th className="border px-4 py-2">İşlem</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {records.map((record) => (
-                    <tr key={record.id}>
-                      <td className="border px-4 py-2">{record.sicilNo}</td>
-                      <td className="border px-4 py-2">{record.tarih}</td>
-                      <td className="border px-4 py-2">{record.vardiya}</td>
-                      <td className="border px-4 py-2">{record.hat}</td>
-                      <td className="border px-4 py-2">{record.dummyNo}</td>
-                      <td className="border px-4 py-2">{record.jigNo}</td>
-                      <td className="border px-4 py-2">{record.hataKodu}</td>
-                      <td className="border px-4 py-2">{record.degisenParca}</td>
-                      <td className="border px-4 py-2">{record.parcaAdedi}</td>
-                      <td className="border px-4 py-2">{record.aciklama}</td>
-                      <td className="border px-4 py-2">
-                        <button
-                          onClick={() => handleDelete(record.id)}
-                          className="bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600"
-                        >
-                          Sil
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+      return React.createElement(
+        'div',
+        { className: 'container mx-auto p-4 bg-gray-100 min-h-screen' },
+        [
+          React.createElement('h1', { className: 'text-2xl font-bold mb-4 text-center' }, 'Veri Giriş Formu'),
+          // Admin giriş kutusu
+          React.createElement(
+            'div',
+            { className: 'mb-4 flex items-center gap-2' },
+            [
+              React.createElement('form', { onSubmit: handleAdminLogin, className: 'flex items-center gap-2' }, [
+                React.createElement('input', {
+                  type: 'password',
+                  value: adminInput,
+                  onChange: (e) => setAdminInput(e.target.value),
+                  className: 'border border-gray-300 rounded-md p-2',
+                  placeholder: 'Admin şifresi',
+                  autoComplete: 'off'
+                }),
+                React.createElement('button', {
+                  type: 'submit',
+                  className: 'bg-gray-700 text-white px-3 py-2 rounded hover:bg-gray-900'
+                }, isAdmin ? 'Admin Mod Açık' : 'Admin Giriş')
+              ]),
+              adminError && React.createElement('span', { className: 'text-red-500 ml-2 text-xs' }, adminError),
+              isAdmin && React.createElement('span', { className: 'ml-2 text-green-600 font-semibold' }, 'Admin aktif')
+            ]
+          ),
+          // Form
+          React.createElement(
+            'form',
+            { onSubmit: handleSubmit, className: 'bg-white p-6 rounded-lg shadow-md mb-6' },
+            [
+              // Submission Message
+              submissionMessage && React.createElement(
+                'p',
+                { className: `text-sm mt-2 ${submissionMessage.includes('başarıyla') ? 'text-green-500' : 'text-red-500'}` },
+                submissionMessage
+              ),
+              // Sicil No
+              React.createElement(
+                'div',
+                { className: 'mb-4' },
+                [
+                  React.createElement('label', { className: 'block text-sm font-medium text-gray-700' }, 'Sicil No *'),
+                  React.createElement('input', {
+                    type: 'password',
+                    name: 'sicilNo',
+                    value: formData.sicilNo,
+                    onChange: handleChange,
+                    className: 'mt-1 block w-full border border-gray-300 rounded-md p-2',
+                    placeholder: 'Yazınız',
+                    required: true,
+                    autoComplete: 'off'
+                  }),
+                  errors.sicilNo && React.createElement('p', { className: 'text-red-500 text-xs mt-1' }, errors.sicilNo)
+                ]
+              ),
+              // Tarih
+              React.createElement(
+                'div',
+                { className: 'mb-4' },
+                [
+                  React.createElement('label', { className: 'block text-sm font-medium text-gray-700' }, 'Tarih *'),
+                  React.createElement('input', {
+                    type: 'date',
+                    name: 'tarih',
+                    value: formData.tarih,
+                    onChange: handleChange,
+                    className: 'mt-1 block w-full border border-gray-300 rounded-md p-2',
+                    required: true
+                  }),
+                  errors.tarih && React.createElement('p', { className: 'text-red-500 text-xs mt-1' }, errors.tarih)
+                ]
+              ),
+              // Vardiya
+              React.createElement(
+                'div',
+                { className: 'mb-4' },
+                [
+                  React.createElement('label', { className: 'block text-sm font-medium text-gray-700' }, 'Vardiya *'),
+                  React.createElement('input', {
+                    type: 'text',
+                    name: 'vardiya',
+                    value: formData.vardiya,
+                    onChange: handleChange,
+                    list: 'vardiya-list',
+                    className: 'mt-1 block w-full border border-gray-300 rounded-md p-2',
+                    placeholder: 'Seçiniz veya yazınız',
+                    required: true
+                  }),
+                  createDatalist('vardiya-list', vardiyaOptions),
+                  errors.vardiya && React.createElement('p', { className: 'text-red-500 text-xs mt-1' }, errors.vardiya)
+                ]
+              ),
+              // Hat
+              React.createElement(
+                'div',
+                { className: 'mb-4' },
+                [
+                  React.createElement('label', { className: 'block text-sm font-medium text-gray-700' }, 'Hat *'),
+                  React.createElement('input', {
+                    type: 'text',
+                    name: 'hat',
+                    value: formData.hat,
+                    onChange: handleChange,
+                    list: 'hat-list',
+                    className: 'mt-1 block w-full border border-gray-300 rounded-md p-2',
+                    placeholder: 'Seçiniz veya yazınız',
+                    required: true
+                  }),
+                  createDatalist('hat-list', hatOptions),
+                  errors.hat && React.createElement('p', { className: 'text-red-500 text-xs mt-1' }, errors.hat)
+                ]
+              ),
+              // Dummy No
+              React.createElement(
+                'div',
+                { className: 'mb-4' },
+                [
+                  React.createElement('label', { className: 'block text-sm font-medium text-gray-700' }, 'Dummy No'),
+                  React.createElement('input', {
+                    type: 'text',
+                    name: 'dummyNo',
+                    value: formData.dummyNo,
+                    onChange: handleChange,
+                    list: 'dummyNo-list',
+                    className: 'mt-1 block w-full border border-gray-300 rounded-md p-2',
+                    placeholder: 'Seçiniz veya yazınız'
+                  }),
+                  createDatalist('dummyNo-list', dummyNoOptions)
+                ]
+              ),
+              // Jig No
+              React.createElement(
+                'div',
+                { className: 'mb-4' },
+                [
+                  React.createElement('label', { className: 'block text-sm font-medium text-gray-700' }, 'Jig No'),
+                  React.createElement('input', {
+                    type: 'text',
+                    name: 'jigNo',
+                    value: formData.jigNo,
+                    onChange: handleChange,
+                    list: 'jigNo-list',
+                    className: 'mt-1 block w-full border border-gray-300 rounded-md p-2',
+                    placeholder: 'Seçiniz veya yazınız'
+                  }),
+                  createDatalist('jigNo-list', jigNoOptions)
+                ]
+              ),
+              // Hata Kodu
+              React.createElement(
+                'div',
+                { className: 'mb-4' },
+                [
+                  React.createElement('label', { className: 'block text-sm font-medium text-gray-700' }, 'Hata Kodu *'),
+                  React.createElement(
+                    'div',
+                    { className: 'flex items-center mb-2' },
+                    [
+                      React.createElement('input', {
+                        type: 'checkbox',
+                        name: 'hataKoduManual',
+                        checked: formData.hataKoduManual,
+                        onChange: handleChange,
+                        className: 'mr-2'
+                      }),
+                      React.createElement('span', null, 'Manuel Giriş')
+                    ]
+                  ),
+                  formData.hataKoduManual
+                    ? React.createElement('input', {
+                        type: 'text',
+                        name: 'customHataKodu',
+                        value: formData.customHataKodu,
+                        onChange: handleChange,
+                        className: 'mt-1 block w-full border border-gray-300 rounded-md p-2',
+                        placeholder: 'Hata kodunu giriniz'
+                      })
+                    : React.createElement('input', {
+                        type: 'text',
+                        name: 'hataKodu',
+                        value: formData.hataKodu,
+                        onChange: handleChange,
+                        list: 'hataKodu-list',
+                        className: 'mt-1 block w-full border border-gray-300 rounded-md p-2',
+                        placeholder: 'Seçiniz veya yazınız'
+                      }),
+                  !formData.hataKoduManual && createDatalist('hataKodu-list', hataKoduOptions),
+                  errors.hataKodu && React.createElement('p', { className: 'text-red-500 text-xs mt-1' }, errors.hataKodu)
+                ]
+              ),
+              // Değişen Parça
+              React.createElement(
+                'div',
+                { className: 'mb-4' },
+                [
+                  React.createElement('label', { className: 'block text-sm font-medium text-gray-700' }, 'Değişen Parça'),
+                  React.createElement(
+                    'div',
+                    { className: 'flex items-center mb-2' },
+                    [
+                      React.createElement('input', {
+                        type: 'checkbox',
+                        name: 'degisenParcaManual',
+                        checked: formData.degisenParcaManual,
+                        onChange: handleChange,
+                        className: 'mr-2'
+                      }),
+                      React.createElement('span', null, 'Manuel Giriş')
+                    ]
+                  ),
+                  formData.degisenParcaManual
+                    ? React.createElement('input', {
+                        type: 'text',
+                        name: 'customDegisenParca',
+                        value: formData.customDegisenParca,
+                        onChange: handleChange,
+                        className: 'mt-1 block w-full border border-gray-300 rounded-md p-2',
+                        placeholder: 'Parça adını giriniz'
+                      })
+                    : React.createElement('input', {
+                        type: 'text',
+                        name: 'degisenParca',
+                        value: formData.degisenParca,
+                        onChange: handleChange,
+                        list: 'degisenParca-list',
+                        className: 'mt-1 block w-full border border-gray-300 rounded-md p-2',
+                        placeholder: 'Seçiniz veya yazınız'
+                      }),
+                  !formData.degisenParcaManual && createDatalist('degisenParca-list', degisenParcaOptions)
+                ]
+              ),
+              // Parça Adedi
+              React.createElement(
+                'div',
+                { className: 'mb-4' },
+                [
+                  React.createElement('label', { className: 'block text-sm font-medium text-gray-700' }, 'Parça Adedi'),
+                  React.createElement('input', {
+                    type: 'text',
+                    name: 'parcaAdedi',
+                    value: formData.parcaAdedi,
+                    onChange: handleChange,
+                    list: 'parcaAdedi-list',
+                    className: 'mt-1 block w-full border border-gray-300 rounded-md p-2',
+                    placeholder: 'Seçiniz veya yazınız'
+                  }),
+                  createDatalist('parcaAdedi-list', parcaAdediOptions)
+                ]
+              ),
+              // Açıklama
+              React.createElement(
+                'div',
+                { className: 'mb-4' },
+                [
+                  React.createElement('label', { className: 'block text-sm font-medium text-gray-700' }, 'Açıklama *'),
+                  React.createElement('textarea', {
+                    name: 'aciklama',
+                    value: formData.aciklama,
+                    onChange: handleChange,
+                    className: 'mt-1 block w-full border border-gray-300 rounded-md p-2',
+                    rows: 4,
+                    required: true
+                  }),
+                  errors.aciklama && React.createElement('p', { className: 'text-red-500 text-xs mt-1' }, errors.aciklama)
+                ]
+              ),
+              // Kaydet Butonu
+              React.createElement(
+                'button',
+                { type: 'submit', className: 'w-full bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600' },
+                'Kaydet'
+              )
+            ]
+          ),
+          // Tablo
+          React.createElement(
+            'div',
+            { className: 'bg-white p-6 rounded-lg shadow-md overflow-x-auto' },
+            [
+              React.createElement('h2', { className: 'text-xl font-bold mb-4' }, 'Kayıtlar'),
+              tableData.length > 0 ? React.createElement(
+                'table',
+                { className: 'min-w-full border border-gray-300' },
+                [
+                  React.createElement(
+                    'thead',
+                    null,
+                    React.createElement(
+                      'tr',
+                      { className: 'bg-gray-100' },
+                      [
+                        React.createElement('th', { className: 'border border-gray-300 p-2 text-left' }, 'Sicil No'),
+                        React.createElement('th', { className: 'border border-gray-300 p-2 text-left' }, 'Tarih'),
+                        React.createElement('th', { className: 'border border-gray-300 p-2 text-left' }, 'Vardiya'),
+                        React.createElement('th', { className: 'border border-gray-300 p-2 text-left' }, 'Hat'),
+                        React.createElement('th', { className: 'border border-gray-300 p-2 text-left' }, 'Dummy No'),
+                        React.createElement('th', { className: 'border border-gray-300 p-2 text-left' }, 'Jig No'),
+                        React.createElement('th', { className: 'border border-gray-300 p-2 text-left' }, 'Hata Kodu'),
+                        React.createElement('th', { className: 'border border-gray-300 p-2 text-left' }, 'Değişen Parça'),
+                        React.createElement('th', { className: 'border border-gray-300 p-2 text-left' }, 'Parça Adedi'),
+                        React.createElement('th', { className: 'border border-gray-300 p-2 text-left' }, 'Açıklama'),
+                        isAdmin && React.createElement('th', { className: 'border border-gray-300 p-2 text-left' }, 'Sil')
+                      ]
+                    )
+                  ),
+                  React.createElement(
+                    'tbody',
+                    null,
+                    tableData.map((entry, index) =>
+                      React.createElement(
+                        'tr',
+                        { key: index, className: 'hover:bg-gray-50' },
+                        [
+                          React.createElement('td', { className: 'border border-gray-300 p-2' }, entry.sicilNo),
+                          React.createElement('td', { className: 'border border-gray-300 p-2' }, entry.tarih),
+                          React.createElement('td', { className: 'border border-gray-300 p-2' }, entry.vardiya),
+                          React.createElement('td', { className: 'border border-gray-300 p-2' }, entry.hat),
+                          React.createElement('td', { className: 'border border-gray-300 p-2' }, entry.dummyNo),
+                          React.createElement('td', { className: 'border border-gray-300 p-2' }, entry.jigNo),
+                          React.createElement('td', { className: 'border border-gray-300 p-2' }, entry.hataKodu),
+                          React.createElement('td', { className: 'border border-gray-300 p-2' }, entry.degisenParca),
+                          React.createElement('td', { className: 'border border-gray-300 p-2' }, entry.parcaAdedi),
+                          React.createElement('td', { className: 'border border-gray-300 p-2' }, entry.aciklama),
+                          isAdmin && React.createElement('td', { className: 'border border-gray-300 p-2' },
+                            React.createElement('button', {
+                              onClick: () => handleDeleteRow(index),
+                              className: 'bg-red-500 text-white px-2 py-1 rounded hover:bg-red-700 text-xs'
+                            }, 'Sil')
+                          )
+                        ]
+                      )
+                    )
+                  )
+                ]
+              ) : React.createElement('p', { className: 'text-gray-500' }, 'Henüz kayıt yok.')
+            ]
+          )
+        ]
       );
     };
 
-    try {
-      const root = ReactDOM.createRoot(document.getElementById('root'));
-      root.render(<App />);
-    } catch (error) {
-      console.error('React rendering error:', error);
-    }
+    ReactDOM.render(React.createElement(App), document.getElementById('root'));
   </script>
 </body>
 </html>
