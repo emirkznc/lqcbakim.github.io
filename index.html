@@ -26,6 +26,17 @@
       "Jig No", "Hata Kodu", "Değişen Parça", "Parça Adedi", "Açıklama"
     ];
 
+    // Generate Jig No Options: A1-150, B1-150, C1-150
+    const generateJigNoOptions = () => {
+      const arr = [];
+      for (let p of ['A', 'B', 'C']) {
+        for (let i = 1; i <= 150; i++) {
+          arr.push(`${p}${i}`);
+        }
+      }
+      return arr;
+    };
+
     const App = () => {
       const [formData, setFormData] = useState({
         sicilNo: '',
@@ -54,9 +65,9 @@
       const vardiyaOptions = ['1 - Gece', '2 - Sabah', '3 - Akşam'];
       const hatOptions = ["İç", "İç 1", "İç 2", "Dış","Dış 1","Dış 2", "Mix", "CAC", "Genel"];
       const dummyNoOptions = Array.from({length: 42}, (_, i) => (i+1).toString());
-      const jigNoOptions = ['J001', 'J002', 'J003', 'J004'];
+      const jigNoOptions = generateJigNoOptions();
       const hataKoduOptions = ['H001', 'H002', 'H003', 'H004'];
-      const degisenParcaOptions = ['Parça 1', 'Parça 2', 'Parça 3', 'Parça 4'];
+      const degisenParcaOptions = ['Uçluk', 'Mıknatıs', 'Terminal', 'Kablo', 'Oring'];
       const parcaAdediOptions = Array.from({length: 10}, (_, i) => (i+1).toString());
 
       useEffect(() => {
@@ -120,7 +131,7 @@
         return Object.keys(newErrors).length === 0;
       };
 
-      const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwbN1lkVqCXyTkjciHU1TS63kQflu3w3haGZR6dlLFs-uNoqY3pUh5CvNikXrihkWi7/exec";
+      const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzcxXAPhNdk5wmIVBeGezpApExtnI1J9EK-RS3Dg6JYw7TWBJKijR6LcikIO_ASaZbF/exec";
 
       const handleSubmit = async (e) => {
         e.preventDefault();
@@ -313,11 +324,6 @@
             'form',
             { onSubmit: handleSubmit, className: 'bg-white p-6 rounded-lg shadow-md mb-6' },
             [
-              submissionMessage && React.createElement(
-                'p',
-                { className: `text-sm mt-2 ${submissionMessage.includes('başarıyla') ? 'text-green-500' : 'text-red-500'}` },
-                submissionMessage
-              ),
               // Sicil No
               React.createElement(
                 'div',
@@ -534,11 +540,22 @@
                   errors.aciklama && React.createElement('p', { className: 'text-red-500 text-xs mt-1' }, errors.aciklama)
                 ]
               ),
-              // Kaydet Butonu
+              // Kaydet Butonu ve Kayıt Mesajı (YATAY YAN YANA)
               React.createElement(
-                'button',
-                { type: 'submit', className: 'w-full bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600' },
-                'Kaydet'
+                'div',
+                { className: 'flex items-center gap-4' },
+                [
+                  React.createElement(
+                    'button',
+                    { type: 'submit', className: 'bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600' },
+                    'Kaydet'
+                  ),
+                  submissionMessage && React.createElement(
+                    'span',
+                    { className: `text-sm ${submissionMessage.includes('başarıyla') ? 'text-green-500' : 'text-red-500'}` },
+                    submissionMessage
+                  )
+                ]
               )
             ]
           ),
